@@ -1,0 +1,4 @@
+Stepper Motor Wiring
+	Phase A Blk/Grn
+	Phase B	Blu/Red
+
