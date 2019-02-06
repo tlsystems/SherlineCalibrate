@@ -65,70 +65,25 @@ encoder::encoder(void)
 }
 
 
-// initialize encoder using External Interrupt method
-//  encType - ALPS or CUI
-//  encE, encA, encB - pin numbers for enter, phaseA, and phaseB
-//  intE, intA - external interrupt numbers of enter and phaseA
-//
-//  Note: encE & encA must be on INT pins
-//
-void encoder::begin(byte encType, 
-                    byte encE, byte encA, byte encB,
-                    byte intE, byte intA)
-{
-	_count = 0;
-
-	_type = encType;
-
-	_ePin = encE;
-	_aPin = encA;
-	_bPin = encB;
-
-	pinMode(_ePin, INPUT);
-	pinMode(_aPin, INPUT);
-	pinMode(_bPin, INPUT);
-
-	_intE = intE;
-	_intA = intA;
-
-	_activeLow = false;
-
-	// attach External Interrupts
-	noInterrupts();
-	_intMode = EXTERNAL_INT;
-	attachInterrupt(_intE, enterISR, CHANGE);
-	if(_type == ALPS)
-		attachInterrupt(_intA, alpsISR, CHANGE);
-	else if(_type == CUI)
-		attachInterrupt(_intA, cuiISR, RISING);
-	interrupts();
-}
-
-
-// initialize encoder using PinChange Interrupt method
-//  encType - ALPS or CUI
+// initialize encoder
 //  encE, encA, encB - pin numbers for enter, phaseA, and phaseB
 //
-//  Note: encE & encA must be on the same Port
-//  Note: Uses PinChangeInt library 
+//  Note: encE & encA must be interrupt pins
 //
-void encoder::begin(byte encType, byte encE, byte encA, byte encB)
+void encoder::begin(byte encE, byte encA, byte encB)
 {
 	_count = 0;
 	
-	_type = encType;
-	
-	pinMode(_ePin, INPUT);
-	pinMode(_aPin, INPUT);
-	pinMode(_bPin, INPUT);
+	pinMode(2, INPUT);
+	pinMode(3, INPUT);
+	pinMode(4, INPUT);
 	
 	_activeLow = false;
 	
 	// attach PinChange Interrupts
 	noInterrupts();
-	_intMode = PINCHANCE_INT;
-	attachInterrupt(digitalPinToInterrupt(_ePin), enterISR, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(_aPin), alpsISR,  CHANGE);
+	attachInterrupt(digitalPinToInterrupt(2), enterISR, RISING);
+	attachInterrupt(digitalPinToInterrupt(3), phaseAISR, CHANGE);
 	interrupts();
 }
 
@@ -137,8 +92,8 @@ void encoder::begin(byte encType, byte encE, byte encA, byte encB)
 void encoder::end(void)
 {
 	noInterrupts();
-	detachInterrupt(_intA);
-	detachInterrupt(_intE);
+	detachInterrupt(digitalPinToInterrupt(_ePin));
+	detachInterrupt(digitalPinToInterrupt(_aPin));
 	interrupts();
 }
 
@@ -167,6 +122,7 @@ void encoder::setActiveLow(bool state)
 //  bit-0 enter
 //  bit-1 phase A
 //  bit-2 phase B
+//	bit-3 enter pin
 //
 byte  encoder::getEncoderState()
 {
@@ -251,40 +207,16 @@ bool encoder::cancel(void)
 	return cancelState;
 }
 
-// ALPS phaseA change handler
+// phaseA change handler
 //
-void encoder::alpsHandler(void) 
+void encoder::phaseAHandler(void) 
 {
-  
-	if(digitalRead(_aPin) == digitalRead(_bPin))
+	digitalWrite(13, !digitalRead(13));
+
+	if(digitalRead(3) == digitalRead(4))
 		decCount();
 	else
 		incCount();
-} 
-
-// CUI phaseA change handler
-//
-void encoder::cuiHandler(void) 
-{
-	volatile long time;
-
-	time = millis();
-
-	//if adequate time has not elapsed, bail
-	if (time - _lastUpdate < CUI_DEBOUNCE) 
-	{
-		interrupts();
-		return;
-	}
-
-	//Read EncB
-	if(digitalRead(_bPin) == LOW)
-		incCount();
-	else
-		decCount();
-
-	//update the last Encoder interrupt time stamp;
-	_lastUpdate = time;
 } 
 
 void encoder::enterHandler(void) 
@@ -299,21 +231,6 @@ void encoder::enterHandler(void)
 		_enterState = 2;
 	else if (isTimeElapsed(time, ENTER_SHORT_PUSH))
 		_enterState = 1;
-	
-	//// test state of _ePin conditioned by  _activeLow
-	//if (isEnterPinPressed())
-	//{  
-	//	_enterStartTime = time;
-	//}
-	//else
-	//{
-	//	if (_enterState == 3)
-	//		_enterState = 0;
-	//	else if (isTimeElapsed(time, ENTER_LONG_PUSH))
-	//		_enterState = 2;
-	//	else if (isTimeElapsed(time, ENTER_SHORT_PUSH)) 
-	//		_enterState = 1;
-	//}
 }
 
 
@@ -321,21 +238,16 @@ void encoder::enterHandler(void)
 encoder Encoder;
 
 
-// ALPS Encoder Function Interrupt Service Routine wrapper
-void alpsISR(void)
-{
-	Encoder.alpsHandler();
-}
-
-// CUI Encoder Function Interrupt Service Routine wrapper
-void cuiISR(void)
-{
-	Encoder.cuiHandler();
-}
-
 // Enter Function Interrupt Service Routine wrapper
 void enterISR(void)
 {
 	Encoder.enterHandler();
 }
+
+// ALPS Encoder Function Interrupt Service Routine wrapper
+void phaseAISR(void)
+{
+	Encoder.phaseAHandler();
+}
+
 

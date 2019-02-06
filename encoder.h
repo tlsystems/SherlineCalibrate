@@ -24,7 +24,7 @@ enum eType
 };
 
 //ISR wrappers
-void alpsISR();
+void phaseAISR();
 void cuiISR();
 void enterISR();
 
@@ -35,14 +35,9 @@ private:
 	uint8_t	_bPin;
 	uint8_t	_ePin;
 
-	uint8_t	_intA;
-	uint8_t	_intE;
-
-	uint8_t	_type;      // encoder type (ALPS or CUI)
 	bool	_activeLow;	// reverses sense of _ePin
-	uint8_t	_intMode;	// true if using PinChange interrupts
 
-	int		_lastCount;   // last value of count, used to determine delta
+	int		_lastCount;	// last value of count, used to determine delta
 
 	int		_min;
 	int 	_max;
@@ -64,8 +59,7 @@ public:
 	byte getEncoderState();   // return the Encoder State
 
 	encoder(void);
-	void begin(uint8_t type, uint8_t encE, uint8_t encA, uint8_t encB, uint8_t intE, uint8_t intA);
-	void begin(uint8_t type, uint8_t encE, uint8_t encA, uint8_t encB);
+	void begin(uint8_t encE, uint8_t encA, uint8_t encB);
 	void end(void);
 
 	void setMin(int min)      { _min = min; }
@@ -93,9 +87,7 @@ private:
 public:
 	//Interrupt Handlers
 	void enterHandler(void);
-	void alpsHandler(void);
-	void cuiHandler(void);
-
+	void phaseAHandler(void);
 
 };
 

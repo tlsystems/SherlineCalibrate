@@ -34,71 +34,163 @@ char _UserInput;
 int x;
 int y;
 int state;
+int _encoderCount;
 
 void setup() 
 {
 	pinMode(pinLED, OUTPUT);
-
+	
 	pinMode(pinStep, OUTPUT);
 	pinMode(pinDirection, OUTPUT);
 	pinMode(pinMS1, OUTPUT);
 	pinMode(pinMS2, OUTPUT);
 	pinMode(pinEnable, OUTPUT);
-	ResetMotorPins(); //Set step, direction, microstep and enable pins to default states
+
+	ResetMotorPins(); 
+
+	//pinMode(pinEncE, INPUT);
+	//pinMode(pinEncA, INPUT);
+	//pinMode(pinEncB, INPUT);
+	Encoder.setMax(1000000);
+	Encoder.setMin(-1000000);
+	Encoder.begin(pinEncE, pinEncA, pinEncB);
 
 	Serial.begin(115200);
 	Serial.println("Begin motor control");
 	Serial.println();
+	
+	WriteEncoderCount();
 }
 
-// Add the main program code into the continuous loop() function
 void loop()
 {
-//	digitalWrite(13, HIGH);
-//	delay(200);
-//	digitalWrite(13, LOW);
-//	delay(600);
+	//	digitalWrite(pinLED, );
+	//if (UpdateEncoder())
+	//	WriteEncoderCount();
 
-	//Main loop
-	while (Serial.available()) 
+	if (Serial.available()) 
 	{
-		_UserInput = Serial.read(); //Read user input and trigger appropriate function
-		digitalWrite(pinEnable, LOW);		//Pull enable pin low to allow motor control
+		_UserInput = Serial.read();		//Read user input and trigger appropriate function
+		digitalWrite(pinEnable, LOW);	//Pull enable pin low to allow motor control
 
-		if (_UserInput == '1')
+		switch(_UserInput)
+		{
+		case 'r':
+			_encoderCount = 0;
+			WriteEncoderCount();
+			break;
+		case '1':
 			StepForwardDefault();
-		else if (_UserInput == '2')
+			PrintEncoderCount();
+			break;
+		case '2':
 			ReverseStepDefault();
-		else if (_UserInput == '3')
-			SmallStepMode();
-		else if (_UserInput == '4')
+			PrintEncoderCount();
+			break;
+		case '3':
+			SmallStepMode(1);
+			PrintEncoderCount();
+			break;
+		case '4':
+			SmallStepMode(0);
+			PrintEncoderCount();
+			break;
+		case '5':
 			ForwardBackwardStep();
-		else if (_UserInput == 'e')
+			PrintEncoderCount();
+			break;
+		case 'e':
 			digitalWrite(pinEnable, LOW);
-		else if (_UserInput == '?')
+			PrintEncoderCount();
+			break;
+		case '?':
 			DisplayHelp();
-		else
+			PrintEncoderCount();
+			break;
+		case 'x':
+			PrintEncoderCount();
+			break;
+		case 'z':
+			Encoder.setCount(0);
+			PrintEncoderCount();
+			break;
+		default:
 			Serial.println("Invalid option entered.");
+			break;
+		}
 
-		Serial.println("Enter new option:");
-		Serial.println();
+//		Serial.println("Enter new option:");
+//		Serial.println();
 
 		ResetMotorPins();
 	}
 
+	//if (Encoder.getDelta() > 0)
+	//{
+	//	Serial.print("Encoder Count: ");
+	//	Serial.println(Encoder.getCount());
+	//}
+
+}
+
+void PrintEncoderCount()
+{
+	Serial.print("Encoder Count = ");
+	Serial.println(Encoder.getCount());
+}
+
+bool UpdateEncoder()
+{
+	static bool lastEncA;
+	bool curEncA = digitalRead(pinEncA);
+	bool curEncB = digitalRead(pinEncB);
+
+	if (curEncA == lastEncA)
+		return false;
+
+	if (curEncA)
+	{
+		if (curEncB)
+			_encoderCount++;
+		else
+			_encoderCount--;
+	}
+	else
+	{
+		if (curEncB)
+			_encoderCount--;
+		else
+			_encoderCount++;
+	}
+
+	lastEncA = curEncA;
+
+	return true;
+}
+
+void WriteEncoderCount()
+{
+	Serial.print("EncoderCount = ");
+	Serial.println(_encoderCount);
 }
 
 // Default microstep mode function
 void StepForwardDefault()
 {
 	Serial.println("Moving forward at default step mode.");
-	digitalWrite(pinDirection, LOW);		//Pull direction pin low to move "forward"
-	for (x = 1; x < 1000; x++)  //Loop the forward stepping enough times for motion to be visible
+	digitalWrite(pinDirection, LOW);	//Pull direction pin low to move "forward"
+	int delayVal = 1;
+	for (x = 0; x < 200; x++)			//Loop the forward stepping enough times for motion to be visible
 	{
-		digitalWrite(pinStep, HIGH); //Trigger one step forward
-		delay(1);
-		digitalWrite(pinStep, LOW); //Pull step pin low so it can be triggered again
-		delay(1);
+		if (x==0 | x == 190)
+			delayVal = 10;
+		else if (delayVal > 1)
+			delayVal -= 1;
+
+		digitalWrite(pinStep, HIGH);	//Trigger one step forward
+		delay(delayVal);
+		digitalWrite(pinStep, LOW);		//Pull step pin low so it can be triggered again
+		delay(delayVal);
 	}
 }
 
@@ -106,29 +198,29 @@ void StepForwardDefault()
 void ReverseStepDefault()
 {
 	Serial.println("Moving in reverse at default step mode.");
-	digitalWrite(pinDirection, HIGH); //Pull direction pin high to move in "reverse"
-	for (x = 1; x < 1000; x++)  //Loop the stepping enough times for motion to be visible
+	digitalWrite(pinDirection, HIGH);	//Pull direction pin high to move in "reverse"
+	for (x = 0; x < 200; x++)			//Loop the stepping enough times for motion to be visible
 	{
-		digitalWrite(pinStep, HIGH); //Trigger one step
+		digitalWrite(pinStep, HIGH);	//Trigger one step
 		delay(1);
-		digitalWrite(pinStep, LOW); //Pull step pin low so it can be triggered again
+		digitalWrite(pinStep, LOW);		//Pull step pin low so it can be triggered again
 		delay(1);
 	}
 }
 
 // 1/8th microstep foward mode function
-void SmallStepMode()
+void SmallStepMode(int dir)
 {
 	Serial.println("Stepping at 1/8th microstep mode.");
-	digitalWrite(pinDirection, LOW); //Pull direction pin low to move "forward"
-	digitalWrite(pinMS1, HIGH); //Pull MS1, and MS2 high to set logic to 1/8th microstep resolution
+	digitalWrite(pinDirection, dir);	//Pull direction pin low to move "forward"
+	digitalWrite(pinMS1, HIGH);			//Pull MS1, and MS2 high to set logic to 1/8th microstep resolution
 	digitalWrite(pinMS2, HIGH);
-	for (x = 1; x < 1000; x++)  //Loop the forward stepping enough times for motion to be visible
+	for (x = 0; x < 1600; x++)			//Loop the forward stepping enough times for motion to be visible
 	{
-		digitalWrite(pinStep, HIGH); //Trigger one step forward
-		delay(1);
-		digitalWrite(pinStep, LOW); //Pull step pin low so it can be triggered again
-		delay(1);
+		digitalWrite(pinStep, HIGH);	//Trigger one step forward
+		delay(5);
+		digitalWrite(pinStep, LOW);		//Pull step pin low so it can be triggered again
+		delay(5);
 	}
 }
 

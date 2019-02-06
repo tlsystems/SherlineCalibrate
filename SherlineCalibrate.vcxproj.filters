@@ -21,7 +21,7 @@
     <ClInclude Include="__vm\.SherlineCalibrate.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Encoder\encoder.h">
+    <ClInclude Include="encoder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -29,7 +29,7 @@
     <Text Include="Wiring Info.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Encoder\encoder.cpp">
+    <ClCompile Include="encoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
